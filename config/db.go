@@ -38,7 +38,9 @@ func createTables() {
 		name TEXT NOT NULL,
 		description TEXT,
 		price TEXT NOT NULL,
-		image_url TEXT
+		image_url TEXT,
+		created_at TIMESTAMP,
+		created_by INTEGER
 	);
 	`
 	_, err = DB.Exec(createProductTable)

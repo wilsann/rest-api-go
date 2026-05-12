@@ -2,14 +2,17 @@ package models
 
 import (
 	"rest-api-go/config"
+	"time"
 )
 
 type Product struct {
-	ID          int64   `json:"id"`
-	Name        string  `binding:"required" json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `binding:"required" json:"price"`
-	ImageURL    string  `json:"image_url"`
+	ID          int64     `json:"id"`
+	Name        string    `binding:"required" json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `binding:"required" json:"price"`
+	ImageURL    string    `json:"image_url"`
+	CreatedAt   time.Time `json:"created_at"`
+	CreatedBy   int64     `json:"created_by"`
 }
 
 var products = []Product{}
@@ -26,7 +29,7 @@ func GetList() ([]Product, error) {
 
 	for rows.Next() {
 		var p Product
-		err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.ImageURL)
+		err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.ImageURL, &p.CreatedAt, &p.CreatedBy)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +43,7 @@ func GetByID(id int64) (*Product, error) {
 	row := config.DB.QueryRow(query, id)
 
 	var p Product
-	err := row.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.ImageURL)
+	err := row.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.ImageURL, &p.CreatedAt, &p.CreatedBy)
 	if err != nil {
 		return nil, err
 	}
@@ -48,14 +51,14 @@ func GetByID(id int64) (*Product, error) {
 }
 
 func (p *Product) Create() error {
-	query := `INSERT INTO products (name, description, price, image_url) 
-	VALUES (?, ?, ?, ?)`
+	query := `INSERT INTO products (name, description, price, image_url, created_at, created_by) 
+	VALUES (?, ?, ?, ?, ?, ?)`
 	stmt, err := config.DB.Prepare(query)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	result, err := stmt.Exec(p.Name, p.Description, p.Price, p.ImageURL)
+	result, err := stmt.Exec(p.Name, p.Description, p.Price, p.ImageURL, p.CreatedAt, p.CreatedBy)
 	if err != nil {
 		return err
 	}
