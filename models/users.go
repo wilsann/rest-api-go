@@ -12,48 +12,20 @@ type User struct {
 	Email    string `binding:"required" json:"email"`
 	Phone    string `json:"phone"`
 	Password string `binding:"required" json:"password"`
+	Status   string `json:"status"`
 }
 
 func (u *User) ValidateCredential() error {
-	query := "SELECT id, password FROM users WHERE email = ?"
-	row := config.DB.QueryRow(query, u.Email)
-
-	var retreivedPassword string
-	err := row.Scan(&u.ID, &retreivedPassword)
-	if err != nil {
-		return errors.New("Invalid Credentials")
+	inputPassword := u.Password
+	result := config.DB.Select("id", "password").Where("email = ?", u.Email).Find(&u)
+	if result.Error != nil {
+		return errors.New("Failed to fetch user by email")
 	}
 
-	validPassword := utils.CheckPasswordHash(u.Password, retreivedPassword)
+	validPassword := utils.CheckPasswordHash(inputPassword, u.Password)
 	if !validPassword {
 		return errors.New("Invalid Credentials")
 	}
 
 	return nil
-}
-
-func (u *User) Create() error {
-	query := `INSERT INTO users (name, email, phone, password) 
-	VALUES (?,?,?,?)`
-	stmt, err := config.DB.Prepare(query)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	hashed, err := utils.HashPassword(u.Password)
-	if err != nil {
-		return err
-	}
-
-	result, err := stmt.Exec(u.Name, u.Email, u.Phone, hashed)
-	if err != nil {
-		return err
-	}
-	userId, err := result.LastInsertId()
-	if err != nil {
-		return err
-	}
-	u.ID = userId
-	return err
 }

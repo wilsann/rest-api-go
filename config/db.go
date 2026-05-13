@@ -1,50 +1,65 @@
 package config
 
 import (
-	"database/sql"
+	"fmt"
+	"log"
+	"os"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/joho/godotenv"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func InnitDB() {
-	var err error
-	DB, err = sql.Open("sqlite3", "kios_warga.db")
+	err := godotenv.Load()
 	if err != nil {
-		panic("Failed to connect to database: " + err.Error())
+		log.Fatal("Failed to load .env file")
 	}
 
-	DB.SetMaxOpenConns(10)
-	DB.SetMaxIdleConns(5)
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
 
-	createTables()
-}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		dbUser, dbPass, dbHost, dbPort, dbName)
 
-func createTables() {
-	createUserTable := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		email TEXT NOT NULL UNIQUE,
-		phone TEXT NOT NULL,
-		password TEXT NOT NULL
-	)`
-	_, err := DB.Exec(createUserTable)
-
-	createProductTable := `
-	CREATE TABLE IF NOT EXISTS products (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		price TEXT NOT NULL,
-		image_url TEXT,
-		created_at TIMESTAMP,
-		created_by INTEGER
-	);
-	`
-	_, err = DB.Exec(createProductTable)
-	if err != nil {
-		panic("Failed to create products table: " + err.Error())
+	var errDB error
+	DB, errDB = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if errDB != nil {
+		log.Fatal("Cannot connect to database:", err)
 	}
+
+	fmt.Println("Successfully connected to the database!")
 }
+
+// func createTables() {
+// 	createUserTable := `
+// 	CREATE TABLE IF NOT EXISTS users (
+// 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+// 		name TEXT NOT NULL,
+// 		email TEXT NOT NULL UNIQUE,
+// 		phone TEXT NOT NULL,
+// 		password TEXT NOT NULL
+// 	)`
+// 	_, err := DB.Exec(createUserTable)
+
+// 	createProductTable := `
+// 	CREATE TABLE IF NOT EXISTS products (
+// 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+// 		name TEXT NOT NULL,
+// 		description TEXT,
+// 		price TEXT NOT NULL,
+// 		image_url TEXT,
+// 		created_at TIMESTAMP,
+// 		created_by INTEGER
+// 	);
+// 	`
+// 	_, err = DB.Exec(createProductTable)
+// 	if err != nil {
+// 		panic("Failed to create products table: " + err.Error())
+// 	}
+// }

@@ -3,15 +3,32 @@ package handlers
 import (
 	"net/http"
 	"rest-api-go/domain/request"
-	"rest-api-go/models"
+	"rest-api-go/usecase"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func ProductList(c *gin.Context) {
-	products, err := models.GetList()
+type ProductHandler interface {
+	ProductList(c *gin.Context)
+	ProductDetail(c *gin.Context)
+	ProductCreate(c *gin.Context)
+	ProductUpdate(c *gin.Context)
+	ProductDelete(c *gin.Context)
+}
+
+type ProductHandlerInteractor struct {
+	usecase usecase.ProductUsecase
+}
+
+func ProductHandlerImpl(productUsecase usecase.ProductUsecase) ProductHandler {
+	return &ProductHandlerInteractor{
+		usecase: productUsecase,
+	}
+}
+
+func (hi *ProductHandlerInteractor) ProductList(c *gin.Context) {
+	products, err := hi.usecase.ProductList()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed get products. %v" + err.Error(),
@@ -24,8 +41,8 @@ func ProductList(c *gin.Context) {
 	})
 }
 
-func ProductDetail(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
+func (hi *ProductHandlerInteractor) ProductDetail(c *gin.Context) {
+	productId, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid product ID",
@@ -33,10 +50,10 @@ func ProductDetail(c *gin.Context) {
 		return
 	}
 
-	product, err := models.GetByID(id)
+	product, err := hi.usecase.ProductDetail(productId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed get product. %v" + err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
@@ -46,7 +63,7 @@ func ProductDetail(c *gin.Context) {
 	})
 }
 
-func ProductCreate(c *gin.Context) {
+func (hi *ProductHandlerInteractor) ProductCreate(c *gin.Context) {
 	var req request.ProductCreateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -56,21 +73,9 @@ func ProductCreate(c *gin.Context) {
 		return
 	}
 
-	layout := "2006-01-02 15:04:05"
-	timeStr := time.Now().Format(layout)
-	t, _ := time.Parse(layout, timeStr)
-
 	userId := c.GetInt64("userId")
-	p := models.Product{
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		ImageURL:    req.ImageURL,
-		CreatedAt:   t,
-		CreatedBy:   userId,
-	}
 
-	err := p.Create()
+	data, err := hi.usecase.ProductCreate(req, userId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed create product.",
@@ -81,59 +86,37 @@ func ProductCreate(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "success",
-		"product": p,
+		"product": data,
 	})
 }
 
-func ProductUpdate(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
-	if err != nil {
+func (hi *ProductHandlerInteractor) ProductUpdate(c *gin.Context) {
+	var req request.ProductUpdateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid product ID",
+			"message": "Invalid request body",
+			"error":   err.Error(),
 		})
 		return
 	}
 
 	userId := c.GetInt64("userId")
-	product, err := models.GetByID(id)
+
+	data, err := hi.usecase.ProductUpdate(req, userId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed get product. %v" + err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
 
-	if product.CreatedBy != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Unauthorized",
-		})
-		return
-	}
-
-	var updatedProduct models.Product
-	err = c.ShouldBindJSON(&updatedProduct)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid request body.",
-		})
-		return
-	}
-
-	updatedProduct.ID = id
-	err = updatedProduct.Update()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed update product.",
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"message": "success",
-		"product": updatedProduct,
+		"product": data,
 	})
 }
 
-func ProductDelete(c *gin.Context) {
+func (hi *ProductHandlerInteractor) ProductDelete(c *gin.Context) {
 	userId := c.GetInt64("userId")
 	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil {
@@ -143,7 +126,7 @@ func ProductDelete(c *gin.Context) {
 		return
 	}
 
-	product, err := models.GetByID(id)
+	err = hi.usecase.ProductDelete(id, userId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed get product. %v" + err.Error(),
@@ -151,21 +134,4 @@ func ProductDelete(c *gin.Context) {
 		return
 	}
 
-	if product.CreatedBy != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Unauthorized",
-		})
-		return
-	}
-
-	err = product.Delete()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed delete product.",
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
-	})
 }

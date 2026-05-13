@@ -3,13 +3,27 @@ package handlers
 import (
 	"net/http"
 	"rest-api-go/domain/request"
-	"rest-api-go/models"
-	"rest-api-go/utils"
+	"rest-api-go/usecase"
 
 	"github.com/gin-gonic/gin"
 )
 
-func UserLogin(c *gin.Context) {
+type UserHandler interface {
+	Register(c *gin.Context)
+	Login(c *gin.Context)
+}
+
+type UserHandlerInteractor struct {
+	usecase usecase.UserUsecase
+}
+
+func UserHandlerImpl(userUsecase usecase.UserUsecase) UserHandler {
+	return &UserHandlerInteractor{
+		usecase: userUsecase,
+	}
+}
+
+func (u *UserHandlerInteractor) Login(c *gin.Context) {
 	var req request.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -18,43 +32,31 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 
-	user := models.User{
-		Email:    req.Email,
-		Password: req.Password,
-	}
-	err := user.ValidateCredential()
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": err.Error(),
-		})
-		return
-	}
-
-	token, err := utils.GenerateToken(req.Email, user.ID)
+	result, err := u.usecase.Login(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
+			"message": "Login Failed. Try again later.",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "success",
-		"token":   token,
+		"token":   result,
 	})
 }
 
-func UserCreate(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+func (u *UserHandlerInteractor) Register(c *gin.Context) {
+	var req request.RegistrationRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid request body",
 			"error":   err.Error(),
 		})
 		return
 	}
-
-	err := user.Create()
+	err := u.usecase.Register(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed create user.",
