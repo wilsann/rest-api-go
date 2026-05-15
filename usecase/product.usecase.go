@@ -101,6 +101,10 @@ func (u *ProductUsecaseInteractor) ProductUpdate(req request.ProductUpdateReq, u
 		return nil, errors.New("Failed fetch product by ID.")
 	}
 
+	if product.CreatedBy != userId {
+		return nil, errors.New("Unauthorized")
+	}
+
 	product.Name = req.Name
 	product.Description = req.Description
 	product.Price = req.Price
@@ -108,7 +112,7 @@ func (u *ProductUsecaseInteractor) ProductUpdate(req request.ProductUpdateReq, u
 
 	data, err := u.ProductRepository.Update(product)
 	if err != nil {
-		return nil, errors.New("Failed create new product.")
+		return nil, errors.New("Failed update product.")
 	}
 
 	return &response.ProductDetailResponse{

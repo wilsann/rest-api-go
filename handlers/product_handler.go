@@ -68,7 +68,6 @@ func (hi *ProductHandlerInteractor) ProductCreate(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid request body",
-			"error":   err.Error(),
 		})
 		return
 	}
@@ -79,7 +78,6 @@ func (hi *ProductHandlerInteractor) ProductCreate(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed create product.",
-			"error":   err.Error(),
 		})
 		return
 	}
@@ -95,7 +93,6 @@ func (hi *ProductHandlerInteractor) ProductUpdate(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid request body",
-			"error":   err.Error(),
 		})
 		return
 	}
@@ -129,9 +126,12 @@ func (hi *ProductHandlerInteractor) ProductDelete(c *gin.Context) {
 	err = hi.usecase.ProductDelete(id, userId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed get product. %v" + err.Error(),
+			"message": "Failed delete product. %v" + err.Error(),
 		})
 		return
 	}
 
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "success",
+	})
 }
