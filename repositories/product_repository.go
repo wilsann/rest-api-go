@@ -23,13 +23,13 @@ func ProductRepositoryImpl(db *gorm.DB) *ProductRepository {
 
 func (r *ProductRepository) GetList() ([]models.Product, error) {
 	var products []models.Product
-	err := r.db.Order("name ASC").Find(&products).Error
+	err := r.db.Where("deleted_at IS NULL").Order("name ASC").Find(&products).Error
 	return products, err
 }
 
 func (r *ProductRepository) GetByID(productId int64) (*models.Product, error) {
 	var product models.Product
-	err := r.db.Where("id = ?", productId).First(&product).Error
+	err := r.db.Where("id = ? AND deleted_at IS NULL", productId).First(&product).Error
 	return &product, err
 }
 

@@ -32,12 +32,17 @@ func (u *UserUsecaseInteractor) Register(req request.RegistrationRequest) error 
 		return err
 	}
 
+	var status string
+	if req.Status == "" {
+		status = "ACTIVE"
+	}
+
 	user := models.User{
 		Name:     req.Name,
 		Email:    req.Email,
 		Phone:    req.Phone,
 		Password: hashed,
-		Status:   req.Status,
+		Status:   status,
 	}
 	_, err = u.UserRepository.Create(&user)
 	if err != nil {

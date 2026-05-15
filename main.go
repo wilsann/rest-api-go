@@ -13,6 +13,7 @@ func main() {
 
 	routes.ProductRoute(server)
 	routes.UserRoute(server)
+	routes.TransactionRoute(server)
 
 	server.Run(":8080")
 }
