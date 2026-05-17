@@ -57,7 +57,7 @@ func (u *UserUsecaseInteractor) Login(req request.LoginRequest) (*response.Login
 		Email:    req.Email,
 		Password: req.Password,
 	}
-	err := user.ValidateCredential()
+	err := utils.ValidateCredential(&user)
 	if err != nil {
 		return nil, errors.New("Failed validate credentials.")
 	}
